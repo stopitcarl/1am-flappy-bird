@@ -1,6 +1,7 @@
 import pygame
 import pygame.freetype
 import random
+import hashlib
 
 WIDTH = 900
 HEIGHT = 600
@@ -23,6 +24,7 @@ pygame.display.set_caption('Flappy bird')
 clock = pygame.time.Clock()
 
 crashed = False
+best_score = 0
 
 black = (0, 0, 0)
 white = (255, 255, 255)
@@ -90,7 +92,6 @@ class Bird:
         self.vel_y += GRAVITY
 
         if self.alive and self.y > (HEIGHT - self.height):
-            print(self.y)
             self.y = HEIGHT - self.height
             self.vel_y = JUMP_VELOCITY * 1.4
             self.die()
@@ -109,9 +110,20 @@ class Bird:
         self.vel_y = JUMP_VELOCITY
 
 
-bird = Bird(BIRD_INIT_X, BIRD_INIT_Y)
-pipes = [Pipe(WIDTH + i * (SPACE_BETWEEN_PIPES), random.randint(20,
-                                                                HEIGHT - PIPE_GAP - 20)) for i in range(5)]
+bird = None
+pipes = None
+move_pipes = True
+
+
+def reset_game():
+    global bird, pipes, move_pipes
+    bird = Bird(BIRD_INIT_X, BIRD_INIT_Y)
+    pipes = [Pipe(WIDTH + i * (SPACE_BETWEEN_PIPES), random.randint(20,
+                                                                    HEIGHT - PIPE_GAP - 20)) for i in range(5)]
+    move_pipes = True
+
+
+reset_game()
 move_pipes = True
 
 while not crashed:
@@ -120,8 +132,11 @@ while not crashed:
             crashed = True
         # print(event)
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and bird.alive:
-                bird.jump()
+            if event.key == pygame.K_SPACE:
+                if bird.alive:
+                    bird.jump()
+                else:
+                    reset_game()
 
     screen.fill((255, 255, 255))
 
@@ -138,7 +153,10 @@ while not crashed:
 
             elif pipe.x + pipe.width / 2 < bird.x and bird.alive and pipe.alive:
                 bird.points += 1
+                if bird.points > best_score:
+                    best_score = bird.points
                 pipe.alive = False
+
             elif not pipe.alive:
                 pipes.append(Pipe(
                     pipes[-1].x + SPACE_BETWEEN_PIPES,
@@ -156,10 +174,19 @@ while not crashed:
 
     if not bird.alive:
         GAME_FONT.render_to(screen, (WIDTH / 3, 200),
-                            f"{bird.points} points", black)
+                            f"This run: {bird.points}", black)
+        GAME_FONT.render_to(screen, (WIDTH / 3, 250),
+                            f"Best: {best_score}", black)        
+        POINTS_FONT.render_to(screen, (WIDTH / 3, 300),
+                              f"Press space to restart", black)
+        code = hashlib.md5(bytes(best_score))
+        POINTS_FONT.render_to(screen, (WIDTH / 4, HEIGHT-100),
+                              f"code that proves your best score: {code.hexdigest()[:6]}", black)
     else:
         POINTS_FONT.render_to(screen, (10, 10),
-                              f"{bird.points}", black)
+                              f"Score: {bird.points}", black)
+        POINTS_FONT.render_to(screen, (WIDTH - 120, 10),
+                              f"Best: {best_score}", black)
 
     pygame.display.update()
     clock.tick(60)
